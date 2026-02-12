@@ -20,7 +20,7 @@ This is not just a collection of scripts. It is a **Learning Lab application** (
 ### 1. Clone the Repository
 ```bash
 git clone <your-repo-url>
-cd PythonAgent
+cd Python-Agent-Mastery-Lab
 ```
 
 ### 2. Create a Virtual Environment (Recommended)

@@ -189,14 +189,14 @@ def render_chapter_3():
         render_mastery_notes(
             "Semantic vs. Recursive",
             "Recursive splitting is fast but 'dumb'—it might cut a sentence in half if the character limit is reached. Semantic splitting 'reads' the text first.",
-            \"\"\"# Using Semantic Splitter
+            """# Using Semantic Splitter
 from langchain_experimental.text_splitter import SemanticChunker
 
 # 1. Provide an embedding model
 splitter = SemanticChunker(HuggingFaceEmbeddings())
 
 # 2. Split (no fixed size needed!)
-docs = splitter.split_documents([raw_doc])\"\"\",
+docs = splitter.split_documents([raw_doc])""",
             {"Breakpoint": "The exact point where the AI decides one topic ended and another began.", "Buffer": "A small window of context the AI looks at to decide on a split."}
         )
 
@@ -240,7 +240,7 @@ def render_chapter_4():
         render_mastery_notes(
             "The Best of Both Worlds",
             "Keyword search is great for names and numbers. Vector search is great for 'what does this mean?'. Hybrid search uses RRF (Reciprocal Rank Fusion) to merge them.",
-            \"\"\"# Ensemble (Hybrid) Retriever
+            """# Ensemble (Hybrid) Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 
@@ -248,7 +248,7 @@ ensemble = EnsembleRetriever(
     retrievers=[vector_retriever, bm25_retriever],
     weights=[0.5, 0.5]
 )
-results = ensemble.invoke(query)\"\"\",
+results = ensemble.invoke(query)""",
             {"BM25": "Best Matching 25 - The standard algorithm for keyword search.", "RRF": "Reciprocal Rank Fusion - A way to score results from different search engines fairly."}
         )
 
@@ -279,13 +279,13 @@ def render_chapter_5():
         render_mastery_notes(
             "Query Expansion",
             "A user might say 'valuation', but a document might say 'worth' or 'market cap'. Multi-Query generates synonyms to catch all relevant documents. Decomposition handles multi-part questions.",
-            \"\"\"# Query Re-writing
-template = \"\"\"Generate {n} variations of: {query}\"\"\"
+            """# Query Re-writing
+template = 'Generate {n} variations of: {query}'
 prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | llm | StrOutputParser()
 
 # The system results in a list of queries 
-# which we then use to search the vector store.\"\"\",
+# which we then use to search the vector store.""",
             {"Recall": "The ability to find ALL relevant documents.", "Recall-Precision Tradeoff": "Generating more queries finds more docs but might introduce 'noise'."}
         )
 
@@ -310,13 +310,13 @@ def render_chapter_6():
         render_mastery_notes(
             "Vision & Tables",
             "Tables are often 'lost' in basic RAG. We use specialized loaders like Unstructured to convert them into Markdown, which preserves the data structure for the AI.",
-            \"\"\"# Vision Parsing Example
+            """# Vision Parsing Example
 from langchain_core.messages import HumanMessage
 message = HumanMessage(content=[
     {\"type\": \"text\", \"text\": \"Describe this chart\"},
     {\"type\": \"image_url\", \"image_url\": \"...\"}
 ])
-response = vision_model.invoke([message])\"\"\",
+response = vision_model.invoke([message])""",
             {"Multi-Vector": "Storing a summary and the raw image separately.", "Vision LLM": "A model trained on both images and text."}
         )
 
@@ -346,13 +346,13 @@ def render_chapter_7():
         render_mastery_notes(
             "The Agentic Mindset",
             "An agent doesn't just fail; it reasons why it failed and tries a different path. This requires 'State' and 'Loops'—the core of LangGraph.",
-            \"\"\"# Chain vs Agent
+            """# Chain vs Agent
 # CHAIN (Linear)
 chain = prompt | model | parser
 
 # AGENT (Cyclic)
 agent = create_openai_functions_agent(llm, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools)\"\"\",
+agent_executor = AgentExecutor(agent=agent, tools=tools)""",
             {"Reasoning Loop": "The 'Think-Act-Observe' cycle.", "Tools": "External functions the AI can call (Google, SQL, etc.)."}
         )
 
@@ -387,7 +387,7 @@ def render_chapter_8():
         render_mastery_notes(
             "The State Machine",
             "In LangChain, data flows in one direction. In LangGraph, we can loop back. We pass a 'State' object between nodes, and each node can modify it.",
-            \"\"\"# Basic StateGraph
+            """# Basic StateGraph
 from langgraph.graph import StateGraph
 
 workflow = StateGraph(MyStateClass)
@@ -395,7 +395,7 @@ workflow.add_node(\"agent\", my_function)
 workflow.set_entry_point(\"agent\")
 workflow.add_edge(\"agent\", END)
 
-app = workflow.compile()\"\"\",
+app = workflow.compile()""",
             {"State": "A shared memory that all nodes can read and write to.", "Compile": "Turning your python logic into an executable graph engine."}
         )
 
@@ -438,7 +438,7 @@ def render_chapter_9():
         render_mastery_notes(
             "The Approval Workflow",
             "By using `interrupt_before`, we tell LangGraph to save the current state to a database and wait. The process is entirely 'pick-up-where-you-left-off'.",
-            \"\"\"# Define Interruption
+            """# Define Interruption
 app = workflow.compile(
     checkpointer=memory,
     interrupt_before=[\"act\"]
@@ -448,7 +448,7 @@ app = workflow.compile(
 app.stream(input, config)
 
 # 2. Resume after human input
-app.stream(None, config)\"\"\",
+app.stream(None, config)""",
             {"Checkpointer": "The database where graph state is saved.", "Thread ID": "Each user or conversation gets its own unique state ID."}
         )
 
@@ -484,14 +484,14 @@ def render_chapter_10():
         render_mastery_notes(
             "Agent Hand-offs",
             "The 'Hand-off' pattern is the most common multi-agent design. One agent finishes its work, updates the shared 'State', and then an edge triggers the next agent to start.",
-            \"\"\"# Collaborative Graph
+            """# Collaborative Graph
 workflow = StateGraph(State)
 workflow.add_node(\"researcher\", res_fn)
 workflow.add_node(\"writer\", write_fn)
 
 # The hand-off is a simple edge
 workflow.add_edge(\"researcher\", \"writer\")
-workflow.add_edge(\"writer\", END)\"\"\",
+workflow.add_edge(\"writer\", END)""",
             {"Specialization": "Smaller models performing specific tasks better than one large model.", "Shared State": "The memory that allows agents to 'talk' to each other."}
         )
 
@@ -524,7 +524,7 @@ def render_chapter_11():
         render_mastery_notes(
             "The Reflection Loop",
             "This pattern solves 'Hallucination' and 'Laziness'. By forcing the model to critique its own first draft, we often get a much more robust and factual second or third draft.",
-            \"\"\"# Reflection Logic
+            """# Reflection Logic
 workflow.add_node(\"drafter\", draft_fn)
 workflow.add_node(\"critic\", critique_fn)
 
@@ -533,7 +533,7 @@ workflow.add_conditional_edges(
     \"critic\",
     should_redraft,
     {\"redraft\": \"drafter\", \"finish\": END}
-)\"\"\",
+)""",
             {"Critique": "Identifying gaps in reasoning or facts.", "Iteration": "Running the generation logic again with new context (the feedback)."}
         )
 
@@ -566,7 +566,7 @@ def render_chapter_12():
         render_mastery_notes(
             "The Memory Thread",
             "In LangGraph, we don't just 'scroll' through history. We 'Checkpoint' it. This means the AI isn't just seeing a list of text; it's seeing the exact state of its 'brain' at a specific moment in time.",
-            \"\"\"# Persistence Setup
+            """# Persistence Setup
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 # We use MemorySaver locally, but in 
@@ -577,7 +577,7 @@ app = workflow.compile(checkpointer=memory)
 
 # Resume conversation 123
 config = {\"configurable\": {\"thread_id\": \"123\"}}
-app.invoke(input, config)\"\"\",
+app.invoke(input, config)""",
             {"Checkpointing": "Saving the state of a graph execution.", "Thread ID": "The unique key used to retrieve a specific agent's memory."}
         )
 
@@ -607,12 +607,12 @@ def render_chapter_13():
         render_mastery_notes(
             "Better Than a Question",
             "Embeddings work best when comparing 'Answers to Answers'. By turning your question into a fake answer FIRST, we find real documents that 'look' like our fake answer.",
-            \"\"\"# HyDE implementation
+            """# HyDE implementation
 hyde_prompt = \"Write a technical answer for: {query}\"
 fake_doc = llm.invoke(hyde_prompt)
 
 # Search with the FAKE doc
-results = vector_store.search(fake_doc)\"\"\",
+results = vector_store.search(fake_doc)""",
             {"HyDE": "Hypothetical Document Embeddings.", "Alignment": "Bringing the query and the document into the same semantic space."}
         )
 
@@ -646,7 +646,7 @@ def render_chapter_14():
         render_mastery_notes(
             "The Signal-to-Noise Ratio",
             "Contextual Compression is a 'Post-Retrieval' step. We find the documents first, then we use a cheaper/faster model to 'Filter' them before sending them to the final reasoning model.",
-            \"\"\"# Compression Setup
+            """# Compression Setup
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 
@@ -654,7 +654,7 @@ compressor = LLMChainExtractor.from_llm(llm)
 compression_retriever = ContextualCompressionRetriever(
     base_compressor=compressor, 
     base_retriever=vector_store.as_retriever()
-)\"\"\",
+)""",
             {"Tokens": "The units of text the AI reads; compression saves money/time.", "Context Window": "The limit of how much an AI can 'remember' at once."}
         )
 
@@ -684,14 +684,14 @@ def render_chapter_15():
         render_mastery_notes(
             "The Traffic Controller",
             "Routing is the first step in build 'Agency'. Instead of a fixed pipeline, we build a decision tree that only fires the expensive components (like vector search) when absolutely necessary.",
-            \"\"\"# Routing logic
+            """# Routing logic
 prompt = \"Classify this query: {query}\"
 category = llm.invoke(prompt)
 
 if category == \"GREETING\":
     return \"Hello! How can I help?\"
 else:
-    return vector_store.search(query)\"\"\",
+    return vector_store.search(query)""",
             {"Latency": "The speed of the system; routing simple queries reduces latency.", "Cost Efficiency": "Avoiding API calls to expensive models when possible."}
         )
 
@@ -734,7 +734,7 @@ def render_chapter_16():
         render_mastery_notes(
             "The Grader Node",
             "This is the first step towards 'Corrective RAG' (CRAG). The model is prompted to be a critic of the retrieved text. If the score is too low, we don't proceed to help avoid hallucinations.",
-            \"\"\"# Grading Logic
+            """# Grading Logic
 def grade_node(state):
     prompt = \"Is this relevant to {query}?\"
     grade = llm.invoke(prompt)
@@ -745,7 +745,7 @@ workflow.add_conditional_edges(
     \"grade\",
     decide_fn,
     {\"yes\": \"generate\", \"no\": END}
-)\"\"\",
+)""",
             {"Self-Correction": "The AI recognizing its own data is bad.", "Reliability": "Ensuring every answer is backed by relevant truth."}
         )
 
@@ -774,7 +774,7 @@ def render_chapter_17():
         render_mastery_notes(
             "The Cost of Thinking",
             "LLMs are expensive and slow. Semantic caching is the #1 way to scale a RAG application. By identifying that query A is 99% similar to query B, we can serve a high-quality answer in under 10ms for $0.",
-            \"\"\"# Semantic Cache Logic
+            """# Semantic Cache Logic
 cache = SemanticCache()
 
 def ask_ai(query):
@@ -786,7 +786,7 @@ def ask_ai(query):
     # Otherwise, call LLM
     answer = llm.invoke(query)
     cache.update(query, answer)
-    return answer\"\"\",
+    return answer""",
             {"Vector Cache": "Storing queries as numbers to find 'similar' questions.", "Latency": "The time a user waits for an answer; cache = low latency."}
         )
 
@@ -819,7 +819,7 @@ def render_chapter_18():
         render_mastery_notes(
             "The RAGAS Framework",
             "Stop guessing and start measuring. RAGAS uses an 'LLM-as-a-Judge' to automatically grade thousands of answers against their source context. This is the only way to catch hallucinations across large datasets.",
-            \"\"\"# RAGAS metrics
+            """# RAGAS metrics
 metrics = [
     faithfulness,
     answer_relevance,
@@ -828,7 +828,7 @@ metrics = [
 ]
 
 # Run evaluation
-result = evaluate(dataset, metrics=metrics)\"\"\",
+result = evaluate(dataset, metrics=metrics)""",
             {"Faithfulness": "Is the answer derived ONLY from the context?", "Relevance": "Does the answer actually address the question?"}
         )
 
@@ -866,7 +866,7 @@ def render_chapter_19():
         render_mastery_notes(
             "Plan & Execute",
             "This pattern is for high-stakes agents. Instead of giving the AI the freedom to loop infinitely, we force it to define its path first. This makes the agent predictable, debuggable, and reliable.",
-            \"\"\"# Planning Node
+            """# Planning Node
 def planner(state):
     plan = llm.invoke(\"Plan for {goal}\")
     return {\"plan\": plan}
@@ -876,7 +876,7 @@ workflow.add_conditional_edges(
     \"executor\",
     should_continue,
     {\"continue\": \"executor\", \"finish\": END}
-)\"\"\",
+)""",
             {"Hierarchical Planning": "Breaking a big task into sub-tasks.", "Predictability": "Knowing exactly what the AI intends to do before it does it."}
         )
 
@@ -914,14 +914,14 @@ def render_chapter_20():
         render_mastery_notes(
             "AI as a Developer",
             "In this pattern, we give the model access to a 'Sandboxed Python Interpreter'. Instead of building every tool yourself, you build a model that can build tools. This creates an agent with near-infinite capability.",
-            \"\"\"# Tool Synthesis Logic
+            """# Tool Synthesis Logic
 def writer(state):
     code = llm.invoke(\"Write code to solve {problem}\")
     return {\"code\": code}
 
 def executor(state):
     result = sandbox.run(state.code)
-    return {\"result\": result}\"\"\",
+    return {\"result\": result}""",
             {"Sandboxing": "Keeping the AI's generated code in a safe container.", "Recursive Growth": "Agents that get smarter by building their own toolkits."}
         )
 
