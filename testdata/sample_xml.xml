@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <note>
+        <to>User</to>
+        <from>Antigravity</from>
+        <heading>Reminder</heading>
+        <body>LangChain parsing is powerful and supports XML formats via Unstructured loaders!</body>
+    </note>
+    

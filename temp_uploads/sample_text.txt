@@ -1,0 +1,4 @@
+Artificial Intelligence in 2024
+AI continues to evolve at a breakneck pace. Large Language Models (LLMs) are now capable of multi-modal reasoning.
+This text file serves as a test case for basic text parsing in our LangChain project.
+It contains multiple sentences to see how the chunking mechanism splits them based on character limits and overlap.

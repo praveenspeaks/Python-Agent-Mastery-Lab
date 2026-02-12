@@ -1,0 +1,35 @@
+# Core LangChain Framework
+langchain               # Main framework for LLM orchestration
+langchain-community     # Third-party integrations (loaders, tools)
+langchain-text-splitters # Logic for splitting text into chunks
+langchain-openai        # OpenAI/OpenRouter API bridge
+
+# Configuration & Security
+python-dotenv           # Manages .env file for API keys
+
+# Document Parsing Engines
+pypdf                   # PDF text extraction (basic)
+pymupdf                 # PDF text extraction (high performance/robust)
+docx2txt                # Word (.docx) text extraction
+python-docx             # Word (.docx) file creation/manipulation
+pandas                  # CSV and Excel data processing
+openpyxl                # Excel (.xlsx) file engine for pandas
+unstructured            # Universal fallback for complex layouts and XML
+beautifulsoup4          # HTML structure parsing (BSHTMLLoader)
+lxml                    # Fast XML/HTML processing backend
+
+# Database & Vector Support
+sqlalchemy              # SQL database connectivity and querying
+faiss-cpu               # Dense vector similarity search
+sentence-transformers   # Local embedding models
+langchain-huggingface   # LangChain + HuggingFace integration
+
+# Utilities & Testing
+fpdf2                   # Programmatic PDF generation for test data
+streamlit               # Web interface for testing components
+pdfplumber              # Additional robust PDF extraction tool
+jq                      # Required for JSONLoader parsing
+# AI Mastery - Advanced Extensions
+langchain-experimental  # Required for SemanticChunker
+scikit-learn           # Dependency for semantic splitting calculations
+rank_bm25              # Logic for Keyword (BM25) search
