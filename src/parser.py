@@ -44,55 +44,29 @@ class DocumentParser:
         ext = os.path.splitext(file_path)[1].lower()
         traces = []
         traces.append({
-            "message": f"🔎 **Step 1: File Type Detection**",
-            "code": f"""
-# 🎯 GOAL: Identify the file format to select the correct parsing strategy.
-
-# 1. COMMAND:
-ext = os.path.splitext('{os.path.basename(file_path)}')[1].lower()
-
-# 2. PACKAGE:
-# 'os' (Python Standard Library) -> Operating System interfaces
-
-# 3. PARAMETERS:
-# path: '{os.path.basename(file_path)}' -> The filename to split
-
-# 4. EXPLANATION:
-# We need the extension (.csv, .pdf) to decide which LangChain loader to use.
-# It splits "data.csv" into ("data", ".csv").
-"""
+            "step": "File Type Detection",
+            "module": "src.parser.DocumentParser",
+            "command": "ext = os.path.splitext(file_path)[1].lower()",
+            "variables": {
+                "file_path": file_path,
+                "extension": ext,
+                "basename": os.path.basename(file_path)
+            },
+            "input": file_path,
+            "output": ext,
+            "explanation": "Identify the file format to select the correct LangChain loader strategy."
         })
         
         # Special case for JSON
         if ext == ".json":
-            code_snippet = (
-"""
-# 🎯 GOAL: Parse structured JSON data into linear text for the LLM.
-
-# 1. COMMAND:
-loader = JSONLoader(
-    file_path='{file_path}', 
-    jq_schema='.[]', 
-    text_content=False
-)
-docs = loader.load()
-
-# 2. PACKAGE:
-# langchain_community.document_loaders
-
-# 3. PARAMETERS:
-# file_path: Path to the .json file
-# jq_schema: '.[]' -> A filter to flatten a list of objects.
-# text_content: False -> Keep the structure (keys/values) instead of just values.
-
-# 4. WHY THIS STRATEGY?
-# JSON is nested. LLMs read left-to-right text.
-# We flatten the JSON list so each item becomes a separate 'Document'.
-"""
-            )
             traces.append({
-                "message": "📦 **Module: JSONLoader** (Structured Data Flattening)",
-                "code": code_snippet
+                "step": "JSON Loading Strategy",
+                "module": "langchain_community.document_loaders.JSONLoader",
+                "command": "loader = JSONLoader(file_path=file_path, jq_schema='.[]', text_content=False)",
+                "variables": {"jq_schema": ".[]", "text_content": False},
+                "input": "Raw JSON File Context",
+                "output": "List[Document]",
+                "explanation": "Flattening nested JSON structures so each entry becomes a distinct Document object."
             })
             loader = JSONLoader(file_path=file_path, jq_schema=".[]", text_content=False)
             docs = loader.load()
@@ -184,121 +158,29 @@ docs = loader.load()
 
         loader_class = self.loaders.get(ext, UnstructuredFileLoader)
         
-        # Determine explanation code based on loader
-        if ext in [".html", ".htm"]:
-            logic_code = (
-"""
-# 🎯 GOAL: Clean HTML boilerplate to extract only human content.
-
-# 1. COMMAND:
-loader = BSHTMLLoader(file_path='{file_path}')
-docs = loader.load()
-
-# 2. PACKAGE:
-# langchain_community.document_loaders (wraps 'BeautifulSoup4')
-
-# 3. STRATEGY DETAILS:
-# - It builds a DOM tree from the HTML.
-# - It IDENTIFIES and REMOVES non-content tags: <script>, <style>, <meta>.
-# - It EXTRACTS text from <p>, <div>, <span>, <h1>, etc.
-
-# 4. WHY WE USE THIS:
-# Raw HTML has too much noise (CSS/JS) that confuses the LLM.
-"""
-            )
-            msg = "🛠️ **Module: BSHTMLLoader** (DOM Parsing & Cleaning)"
-        elif ext == ".docx":
-            logic_code = (
-"""
-# 🎯 GOAL: Extract text from MS Word Documents.
-
-# 1. COMMAND:
-loader = Docx2txtLoader(file_path='{file_path}')
-docs = loader.load()
-
-# 2. PACKAGE:
-# langchain_community.document_loaders
-
-# 3. TECHNICAL CONTEXT:
-# A .docx file is actually a zipped folder of XML files!
-# This loader:
-#   a) Unzips the .docx archive.
-#   b) Finds 'word/document.xml'.
-#   c) Parses the XML tags to find the actual text content.
-
-# 4. WHY WE USE THIS:
-# It's lighter and faster than loading the full Word application object model.
-"""
-            )
-            msg = "📎 **Module: Docx2txtLoader** (XML Extraction)"
-        elif ext in [".csv", ".xlsx"]:
-            logic_code = (
-"""
-# 🎯 GOAL: Load a Spreadsheet where every row is a distinct data point.
-
-# 1. COMMAND:
-loader = CSVLoader(file_path='{file_path}')
-docs = loader.load()
-
-# 2. PACKAGE:
-# langchain_community.document_loaders
-
-# 3. PARAMETERS:
-# file_path: Path to the .csv file
-
-# 4. WHY THIS STRATEGY?
-# CSVs are structured. We don't want to lump all rows into one text blob.
-# This loader treats EVERY ROW as a separate 'Document' object.
-# This helps the AI understand that Row 1 is different from Row 2.
-"""
-            )
-            msg = "📊 **Module: CSV/Excel Loader** (Row-based splitting)"
-        else:
-            logic_code = f"""
-# 🎯 GOAL: Generic loading for {ext} files.
-
-# 1. COMMAND:
-loader = {loader_class.__name__}(file_path)
-docs = loader.load()
-
-# 2. PACKAGE:
-# langchain_community.document_loaders
-
-# 3. STRATEGY:
-# Standard text loading strategy.
-"""
-            msg = f"🛠️ **Module Selected:** `{loader_class.__name__}`"
-
         traces.append({
-            "message": msg,
-            "code": logic_code
+            "step": f"Loader Selection: {loader_class.__name__}",
+            "module": f"langchain_community.document_loaders.{loader_class.__name__}",
+            "command": f"loader = {loader_class.__name__}(file_path); docs = loader.load()",
+            "variables": {"loader_type": loader_class.__name__, "extension": ext},
+            "input": file_path,
+            "output": "List[Document]",
+            "explanation": f"Using the specialized {loader_class.__name__} for optimized text extraction from {ext} files."
         })
             
         loader = loader_class(file_path)
         docs = loader.load()
         traces.append({
-            "message": "✅ **Normalization Complete: 'Universal Document Format'**",
-            "code": (
-"""
-# 🎯 GOAL: Standardize distinct file types into a common format.
-
-# 1. CLASS:
-class Document(BaseModel):
-    page_content: str
-    metadata: dict
-
-# 2. PACKAGE:
-# langchain_core.documents
-
-# 3. ATTRIBUTES:
-# page_content: The raw text extracted (e.g. "Meeting Minutes...")
-# metadata: Contextual info (e.g. {'source': 'report.pdf', 'page': 1})
-
-# 4. WHY WE USE THIS:
-# The LLM doesn't care if the source was a PDF or a website.
-# It only processes 'Documents'. This step unifies all inputs.
-"""
-            )
+            "step": "Document Normalization",
+            "module": "langchain_core.documents.Document",
+            "command": "[Document(page_content=text, metadata={...}) for text in raw_splits]",
+            "variables": {
+                "total_documents": len(docs),
+                "metadata_keys": list(docs[0].metadata.keys()) if docs else []
+            },
+            "input": "File-specific raw data",
+            "output": f"List with {len(docs)} standardized Document objects",
+            "explanation": "Standardizing all inputs into a common 'Document' class so the rest of the pipeline works regardless of source format."
         })
         return docs, traces
 

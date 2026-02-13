@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Any
 from langchain_core.documents import Document
+from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
 
 # Load environment variables
 load_dotenv()
@@ -57,6 +58,43 @@ class AIModelHandler:
             }
         )
         self.output_parser = StrOutputParser()
+        self.langfuse_handler = self._init_langfuse()
+        self.last_run_traces = []
+        
+        # Immediate Trace for Initialization
+        self.last_run_traces.append({
+            "step": "AI Model Handler Initialization",
+            "module": "src.ai_model.AIModelHandler",
+            "command": f"ChatOpenAI(model='{self.model_name}', openai_api_base='{base_url}')",
+            "variables": {
+                "model_name": self.model_name,
+                "base_url": base_url,
+                "api_key": "SET" if api_key else "MISSING"
+            },
+            "input": "N/A",
+            "output": f"Initialized ChatOpenAI with {self.model_name}",
+            "explanation": "Connecting to the LLM provider (OpenRouter) with standard OpenAI compatibility."
+        })
+
+    def _init_langfuse(self):
+        """Initializes the Langfuse callback handler if keys are present."""
+        public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+        secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+        host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        
+        if public_key and secret_key:
+            return LangfuseCallbackHandler(
+                public_key=public_key,
+                secret_key=secret_key,
+                host=host
+            )
+        return None
+
+    def get_callbacks(self, trace_name: str = "Learning Lab Task"):
+        """Returns a list of callbacks for LangChain runs."""
+        if self.langfuse_handler:
+            return [self.langfuse_handler]
+        return []
 
     def validate_setup(self):
         """Checks if the API key is set."""
@@ -144,6 +182,7 @@ class AIModelHandler:
         """
         Generates different versions of a user query to improve retrieval.
         """
+        self.last_run_traces = [] # Clear history for new run
         prompt = ChatPromptTemplate.from_template(
             "You are an AI assistant tasked with generating {n} different versions of a user search query. "
             "The goal is to overcome the limitations of distance-based similarity search by providing "
@@ -154,7 +193,19 @@ class AIModelHandler:
         chain = prompt | self.llm | self.output_parser
         try:
             response = chain.invoke({"query": query, "n": n})
-            return [q.strip() for q in response.split("\n") if q.strip()]
+            queries = [q.strip() for q in response.split("\n") if q.strip()]
+            
+            # Technical Trace
+            self.last_run_traces.append({
+                "step": "Multi-Query Generation",
+                "module": "src.ai_model.AIModelHandler",
+                "command": f"chain = prompt | self.llm | StrOutputParser(); chain.invoke({{'query': '{query}', 'n': {n}}})",
+                "variables": {"n_variations": n, "model": self.model_name},
+                "input": query,
+                "output": queries,
+                "explanation": "Generating multiple perspectives of the same question to increase the chance of finding relevant documents (improves Recall)."
+            })
+            return queries
         except Exception as e:
             print(f"Error generating multi-queries: {e}")
             return [query]
@@ -163,6 +214,7 @@ class AIModelHandler:
         """
         Breaks a complex query into simpler sub-questions.
         """
+        self.last_run_traces = [] # Clear history for new run
         prompt = ChatPromptTemplate.from_template(
             "You are an AI assistant that breaks down complex user questions into simpler sub-questions. "
             "Decompose the following complex query into a logical sequence of simpler steps or questions. "
@@ -172,23 +224,47 @@ class AIModelHandler:
         chain = prompt | self.llm | self.output_parser
         try:
             response = chain.invoke({"query": query})
-            return [q.strip() for q in response.split("\n") if q.strip()]
+            sub_queries = [q.strip() for q in response.split("\n") if q.strip()]
+            
+            # Technical Trace
+            self.last_run_traces.append({
+                "step": "Query Decomposition",
+                "module": "src.ai_model.AIModelHandler",
+                "command": "chain = prompt | self.llm | StrOutputParser(); chain.invoke({'query': query})",
+                "variables": {"strategy": "Step-by-step reasoning", "model": self.model_name},
+                "input": query,
+                "output": sub_queries,
+                "explanation": "Breaking down a compound question into atomic steps that can be answered sequentially."
+            })
+            return sub_queries
         except Exception as e:
             print(f"Error decomposing query: {e}")
             return [query]
 
     def generate_hyde_document(self, query: str) -> str:
         """
-        Generates a hypothetical document based on the query (HyDE pattern).
+        Generates a hypothetical document based on the query.
         """
+        self.last_run_traces = [] # Clear history
         prompt = ChatPromptTemplate.from_template(
-            "Please write a short, one-paragraph technical answer to the following question. "
-            "Even if you are unsure, provide a hypothetical response that looks like a valid document. "
-            "This will be used to help search for real documents.\\n\\nQuestion: {query}"
+            "Please write a scientific-style paragraph that answers the question: {query}"
         )
         chain = prompt | self.llm | self.output_parser
+        
         try:
-            return chain.invoke({"query": query})
+            response = chain.invoke({"query": query}, config={"callbacks": self.get_callbacks("HyDE Generation")})
+            
+            # Capture Trace
+            self.last_run_traces.append({
+                "step": "HyDE Document Generation",
+                "module": "src.ai_model.AIModelHandler",
+                "command": "chain = prompt | self.llm | StrOutputParser(); chain.invoke({'query': query})",
+                "variables": {"model": self.model_name, "query": query},
+                "input": query,
+                "output": response,
+                "explanation": "Generating a 'ground truth' style paragraph to improve vector search recall. Comparing 'Answer to Answer' (HyDE) is often more accurate than 'Question to Answer'."
+            })
+            return response
         except Exception as e:
             print(f"Error generating HyDE document: {e}")
             return query
@@ -197,39 +273,71 @@ class AIModelHandler:
         """
         Generates a summary from retrieved documents, with optional caching.
         """
+        self.last_run_traces = [] # Clear history
         # 1. Check Cache
         cached = self.cache.lookup(query)
         if cached:
-            return cached, [{"message": "⚡ **Semantic Cache Hit!** Returning instant response.", "code": f"cache.lookup('{query}')"}]
+            self.last_run_traces.append({
+                "step": "Semantic Cache Lookup",
+                "module": "src.cache.SemanticCache",
+                "command": f"cache.lookup('{query}')",
+                "variables": {"hit": True},
+                "input": query,
+                "output": cached,
+                "explanation": "Instantly retrieving a previously computed response based on semantic similarity of the query."
+            })
+            return cached, []
 
         # 2. Proceed with LLM if no cache hit
         prompt = ChatPromptTemplate.from_template(
             "Use the following pieces of context to answer the user's question. "
             "If you don't know the answer, just say that you don't know. "
-            "Context: {context}\\nQuestion: {query}\\nAnswer:"
+            "Context: {context}\nQuestion: {query}\nAnswer:"
         )
         chain = prompt | self.llm | self.output_parser
-        traces = [{"message": "🤖 **Cache Miss.** Calling LLM for fresh reasoning...", "code": ""}]
+        
         try:
             summary = chain.invoke({"context": context, "query": query})
             self.cache.update(query, summary)
-            return summary, traces
+            
+            # Technical Trace
+            self.last_run_traces.append({
+                "step": "RAG Summary Generation",
+                "module": "src.ai_model.AIModelHandler",
+                "command": "chain.invoke({'context': context, 'query': query})",
+                "variables": {"model": self.model_name, "context_len": len(context)},
+                "input": f"Query: {query} | Context: {context[:200]}...",
+                "output": summary,
+                "explanation": "Synthesizing an answer using the retrieved context window. This is the 'Generation' part of RAG."
+            })
+            return summary, []
         except Exception as e:
-            traces.append({"message": f"❌ **Summary generation failed:** {e}", "code": ""})
-            return "", traces
+            return "", []
 
     def classify_query(self, query: str) -> str:
         """
         Classifies a user query to decide on routing.
         """
+        self.last_run_traces = [] # Clear history
         prompt = ChatPromptTemplate.from_template(
             "Classify the following user query into one of these categories: "
-            "['GREETING', 'TECHNICAL_QUESTION', 'DATABASE_SEARCH'].\\n"
-            "Respond with ONLY the category name.\\n\\nQuery: {query}"
+            "['GREETING', 'TECHNICAL_QUESTION', 'DATABASE_SEARCH'].\n"
+            "Respond with ONLY the category name.\n\nQuery: {query}"
         )
         chain = prompt | self.llm | self.output_parser
         try:
             category = chain.invoke({"query": query}).strip().upper()
+            
+            # Technical Trace
+            self.last_run_traces.append({
+                "step": "Intent Classification (Routing)",
+                "module": "src.ai_model.AIModelHandler",
+                "command": "chain.invoke({'query': query})",
+                "variables": {"model": self.model_name, "detected_category": category},
+                "input": query,
+                "output": category,
+                "explanation": "Using a cheap LLM call to decide which backend logic (Retrieval, Chat, or Agent) should handle the request."
+            })
             return category if category in ['GREETING', 'TECHNICAL_QUESTION', 'DATABASE_SEARCH'] else 'DATABASE_SEARCH'
         except Exception as e:
             print(f"Error classifying query: {e}")

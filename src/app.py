@@ -1,3 +1,5 @@
+from typing import List, Optional, Dict, Any
+from langchain_core.documents import Document
 from src.parser import DocumentParser
 from src.processor import DocumentProcessor
 from src.ai_model import AIModelHandler
@@ -73,20 +75,36 @@ class LangChainAgent:
         """
         Searches for relevant documents using semantic similarity.
         """
-        all_logs = [{"message": f"🔍 **Searching for:** '{query}'", "code": ""}]
+        all_logs = []
         try:
             results = self.vector_store.search(query, k=k)
-            all_logs.append({"message": f"✨ **Found {len(results)} relevant results.**", "code": ""})
+            all_logs.append({
+                "step": "Vector Similarity Search",
+                "module": "src.vector_store.VectorStoreManager",
+                "command": f"vector_store.search(query='{query}', k={k})",
+                "variables": {"query": query, "k": k, "engine": "FAISS"},
+                "input": query,
+                "output": f"Found {len(results)} matches",
+                "explanation": "Converting the query to a vector and measuring cosine similarity against all stored document vectors."
+            })
             return results, all_logs
         except Exception as e:
-            all_logs.append({"message": f"❌ **Search failed:** {e}", "code": ""})
+            all_logs.append({
+                "step": "Search Failure",
+                "module": "src.app.LangChainAgent",
+                "command": "search_documents()",
+                "variables": {"error": str(e)},
+                "input": query,
+                "output": "Error",
+                "explanation": "The semantic search operation failed, likely due to an uninitialized index."
+            })
             return [], all_logs
 
     def hybrid_search(self, query: str, documents: List[Document], vector_weight: float = 0.5, keyword_weight: float = 0.5):
         """
         Performs a hybrid search combining Vector and Keyword retrieval.
         """
-        all_logs = [{"message": "⚖️ **Initiating Hybrid Search Extraction**", "code": ""}]
+        all_logs = []
         try:
             retriever = self.vector_store.get_hybrid_retriever(
                 documents, 
@@ -95,15 +113,40 @@ class LangChainAgent:
             )
             
             all_logs.append({
-                "message": "🔄 **Ensemble Merging Strategy**",
-                "code": f"# Vector Weight: {vector_weight}\\n# Keyword (BM25) Weight: {keyword_weight}\\n# Result: RRF (Reciprocal Rank Fusion) or weighted score."
+                "step": "Ensemble Retriever Initialization",
+                "module": "langchain.retrievers.EnsembleRetriever",
+                "command": "EnsembleRetriever(retrievers=[vector, bm25], weights=[v_w, k_w])",
+                "variables": {
+                    "vector_weight": vector_weight,
+                    "keyword_weight": keyword_weight,
+                    "fusion_strategy": "Reciprocal Rank Fusion (RRF)"
+                },
+                "input": f"{len(documents)} Context Docs",
+                "output": "Initialized Hybrid Retriever",
+                "explanation": "Combining the 'Deep Meaning' of vectors with the 'Exact Match' precision of BM25 (keyword) search."
             })
             
             results = retriever.invoke(query)
-            all_logs.append({"message": f"🏆 **Hybrid Search completed.** Found {len(results)} results.", "code": ""})
+            all_logs.append({
+                "step": "Hybrid Retrieval Execution",
+                "module": "langchain.retrievers.EnsembleRetriever",
+                "command": f"retriever.invoke('{query}')",
+                "variables": {"result_count": len(results)},
+                "input": query,
+                "output": f"Ranked List of {len(results)} docs",
+                "explanation": "Executing search across both internal indices and merging the results based on Reciprocal Rank Fusion."
+            })
             return results, all_logs
         except Exception as e:
-            all_logs.append({"message": f"❌ **Hybrid Search failed:** {e}", "code": ""})
+            all_logs.append({
+                "step": "Hybrid Search Failure",
+                "module": "src.app.LangChainAgent",
+                "command": "hybrid_search()",
+                "variables": {"error": str(e)},
+                "input": query,
+                "output": "Error",
+                "explanation": "The hybrid search failed."
+            })
             return [], all_logs
 
     def enhance_query(self, query: str, mode: str = "multi_query"):

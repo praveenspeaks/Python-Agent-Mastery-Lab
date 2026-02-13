@@ -37,8 +37,11 @@ This document outlines our step-by-step journey to building advanced Agentic AI 
 - [x] **20. Tool Synthesis**: Agents that write and debug their own tools/MCP Servers [Documentation](./roadmap/20_tool_synthesis.md)
 - [x] **21. Multi-Agent Orchestration**: Boss/Worker patterns and Conflict Resolution [Completed]
 - [x] **22. Long-term Context Management**: Vectorized memory vs. Episodic memory [Completed]
-- [x] **23. Self-Evolving Agents**: Performance monitoring and autonomous prompt optimization [Completed]
-- [x] **24. Deployment & Scaling**: Productizing complex agentic workflows [Documentation](./roadmap/24_graduation.md)
+- [ ] **Chapter 20: Tool Synthesis & Execution** [20_tools.md](file:///d:/My%20Professional%20Projects/PythonAgent/roadmap/20_tools.md)
+- [x] **Chapter 24: Final Graduation** [24_graduation.md](file:///d:/My%20Professional%20Projects/PythonAgent/roadmap/24_graduation.md)
+
+### Phase 7: Observability & Production Architecture (Bonus)
+- [ ] **Chapter 25: Langfuse Tracing & Observability** [25_langfuse.md](file:///d:/My%20Professional%20Projects/PythonAgent/roadmap/25_langfuse.md)
 
 ---
 

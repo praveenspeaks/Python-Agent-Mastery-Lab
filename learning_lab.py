@@ -35,6 +35,38 @@ def render_mastery_notes(title, explanation, code, key_terms=None):
         for term, desc in key_terms.items():
             st.markdown(f"- **{term}**: {desc}")
 
+def render_technical_trace(traces):
+    """Renders a list of structured technical traces."""
+    if not traces:
+        return
+    
+    st.markdown("### 🔬 Technical Trace Log")
+    st.caption("Deep visibility into the internal logic, variables, and data flow.")
+    for trace in traces:
+        with st.expander(f"🔹 Step: {trace.get('step', 'Operation')}"):
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                st.markdown(f"**Module:** `{trace.get('module', 'N/A')}`")
+                st.markdown(f"**Explanation:** {trace.get('explanation', 'N/A')}")
+            with col2:
+                if trace.get("variables"):
+                    st.markdown("**Variables:**")
+                    st.json(trace["variables"])
+            
+            if trace.get("command"):
+                st.markdown("**Command Executed:**")
+                st.code(trace["command"], language="python")
+            
+            t_left, t_right = st.columns(2)
+            with t_left:
+                if trace.get("input") and trace["input"] != "N/A":
+                    st.markdown("**Input:**")
+                    st.info(str(trace["input"])[:500] + ("..." if len(str(trace["input"])) > 500 else ""))
+            with t_right:
+                if trace.get("output") and trace["output"] != "N/A":
+                    st.markdown("**Output:**")
+                    st.success(str(trace["output"])[:500] + ("..." if len(str(trace["output"])) > 500 else ""))
+
 # --- Pillar Content Functions ---
 
 def render_overview():
@@ -100,9 +132,11 @@ def render_chapter_1():
                 with st.spinner("Processing..."):
                     docs, logs = agent.parser.load_document(os.path.join(test_data_dir, selected_file))
                     st.success(f"Successfully parsed {len(docs)} segments.")
-                    for log in logs:
-                        st.write(log["message"])
-                    with st.expander("View Raw Text"):
+                    
+                    # New Structured Tracing
+                    render_technical_trace(logs)
+                    
+                    with st.expander("View Raw Normalized Text"):
                         st.write(docs[0].page_content if docs else "Empty")
         else:
             st.error("testdata folder missing.")
@@ -129,6 +163,10 @@ def render_chapter_2():
         
         if st.button("Semantic Retrieval"):
             results, logs = agent.search_documents(query, k=3)
+            
+            # Technical Deep Dive
+            render_technical_trace(logs)
+            
             if results:
                 st.write("### Relevant Chunks Found:")
                 for i, doc in enumerate(results):
@@ -181,6 +219,10 @@ def render_chapter_3():
                     chunks, logs = agent.processor.split_documents([Document(page_content=raw_text)], mode="semantic")
                 
                 st.subheader(f"Generated {len(chunks)} Chunks")
+                
+                # Technical Deep Dive
+                render_technical_trace(logs)
+                
                 for i, chunk in enumerate(chunks):
                     st.markdown(f"**Chunk {i+1}**")
                     st.code(chunk.page_content)
@@ -231,10 +273,13 @@ def render_chapter_4():
                     keyword_weight=k_weight
                 )
                 
+                # Technical Deep Dive
+                render_technical_trace(logs)
+                
                 st.subheader("Mixed Results")
                 for i, doc in enumerate(results):
                     st.markdown(f"**Result {i+1}**")
-                    st.info(doc.page_content)
+                    st.info(doc.info.page_content if hasattr(doc, 'info') else doc.page_content)
 
     with right:
         render_mastery_notes(
@@ -271,6 +316,10 @@ def render_chapter_5():
                 results, logs = agent.enhance_query(complex_query, mode=mode)
                 
                 st.subheader("Enhanced Output")
+                
+                # Technical Deep Dive
+                render_technical_trace(agent.ai.last_run_traces)
+                
                 for i, q in enumerate(results):
                     st.markdown(f"**{ 'Query' if mode == 'multi_query' else 'Step' } {i+1}**")
                     st.info(q)
@@ -601,6 +650,10 @@ def render_chapter_13():
                 hyde_doc, logs = agent.hyde_search(query)
                 st.subheader("The 'Hypothetical' Document")
                 st.info(hyde_doc)
+                
+                # Technical Deep Dive
+                render_technical_trace(agent.ai.last_run_traces)
+                
                 st.success("Now searching the database using this hallucinated text... (Conceptual)")
 
     with right:
@@ -673,6 +726,10 @@ def render_chapter_15():
         if st.button("Route Query"):
             with st.spinner("Classifying intent..."):
                 category, logs = agent.route_query(query)
+                
+                # Technical Deep Dive
+                render_technical_trace(agent.ai.last_run_traces)
+                
                 if category == "GREETING":
                     st.success(f"👋 Detected Greeting. Routing to 'Chat' chain.")
                 elif category == "TECHNICAL_QUESTION":
@@ -765,9 +822,10 @@ def render_chapter_17():
         if st.button("Query AI (with Caching)"):
             with st.spinner("Checking cache and processing..."):
                 answer, logs = agent.cached_query(test_query)
-                for log in logs:
-                    label = "⚡ Cache" if "Cache" in log['message'] else "🤖 LLM"
-                    st.info(f"{label}: {log['message']}")
+                
+                # Technical Deep Dive
+                render_technical_trace(agent.ai.last_run_traces)
+                
                 st.write(answer)
 
     with right:
@@ -1009,6 +1067,46 @@ def render_phase_6_navigation():
         st.title(f"🚀 {chapter}")
         st.warning("⚠️ This mastery module is coming soon!")
 
+def render_chapter_25():
+    st.title("🔬 Chapter 25: Langfuse Tracing & Observability")
+    left, right = st.columns([1, 1])
+
+    with left:
+        st.markdown("""
+        Observability is the difference between a **prototype** and a **production** system.
+        
+        **In this chapter, we master:**
+        1. **Tracing**: Seeing the full execution graph of an agent.
+        2. **Evaluation**: Scoring responses to improve reliability.
+        3. **Prompt Management**: Versioning prompts without changing code.
+        """)
+        
+        st.image("https://langfuse.com/images/docs/trace-detail.png", caption="Langfuse Trace Visualization")
+        
+    with right:
+        render_mastery_notes(
+            "The Callback Pattern",
+            "LangChain Agents emit 'events' at every step. Langfuse 'listens' to these events and organizes them into Traces and Spans.",
+            """# 1. Initialize Handler
+from langfuse.callback import CallbackHandler
+handler = CallbackHandler(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY")
+)
+
+# 2. Run with Callbacks
+config = {"callbacks": [handler]}
+graph.invoke(state, config=config)""",
+            {"Tracing": "The web of steps taken to reach an answer.", "Evaluation": "Automatic or human-in-the-loop scoring of results."}
+        )
+
+def render_phase_7_navigation():
+    chapter = st.sidebar.radio("Observability Module:", [
+        "Chapter 25: Langfuse Tracing"
+    ])
+    if "Chapter 25" in chapter:
+        render_chapter_25()
+
 # --- Navigation Logic ---
 st.sidebar.title("📚 Course Catalog")
 pillar = st.sidebar.selectbox("Select Learning Pillar:", [
@@ -1017,7 +1115,8 @@ pillar = st.sidebar.selectbox("Select Learning Pillar:", [
     "🕸️ LangGraph Workflows", 
     "🌊 Advanced RAG Patterns",
     "🏭 Production Agentic RAG",
-    "🤖 DeepAgents"
+    "🤖 DeepAgents",
+    "🔬 Observability"
 ])
 
 if pillar == "🏠 Home / Overview":
@@ -1104,6 +1203,8 @@ for step in plan.steps:
         st.title(f"🚀 {chapter}")
         st.warning("⚠️ This advanced mastery chapter is part of the Phase 6 roadmap and is coming soon!")
         st.markdown("Check [ROADMAP.md](file:///d:/My%20Professional%20Projects/PythonAgent/ROADMAP.md) for the full details of what you will learn here.")
+elif pillar == "🔬 Observability":
+    render_phase_7_navigation()
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Mastery Lab v2.0 | Built with Antigravity 🚀")
